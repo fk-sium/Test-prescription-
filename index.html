@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Professional E-Prescription System</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* --- CSS VARIABLES & RESET --- */
+    :root {
+      --primary: #0f766e; /* Teal 700 */
+      --primary-dark: #0f5132;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --danger: #ef4444;
+      --radius: 8px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main);
+      height: 100vh; overflow-y: auto;
+    }
+
+    /* --- LAYOUT GRID --- */
+    .app-container {
+      display: grid;
+      grid-template-columns: 450px 1fr; /* Sidebar fixed, Preview flexible */
+      height: 100vh;
+    }
+
+    /* --- LEFT SIDEBAR (EDITOR) --- */
+    .editor-pane {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .brand h1 { font-size: 18px; font-weight: 700; margin: 0; color: var(--primary); }
+    .brand span { background: #ccfbf1; color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+
+    /* Form Elements */
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: var(--text-main); margin-bottom: 6px; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    
+    input, select, textarea {
+      width: 100%; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; font-family: inherit; transition: border 0.2s;
+      background: #f8fafc;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--primary); background: #fff;
+    }
+
+    /* Medicine Card */
+    .med-card {
+      background: #f8fafc; border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px; margin-bottom: 10px; position: relative;
+    }
+    .med-card .remove-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: transparent; color: var(--danger); border: none; cursor: pointer; font-size: 16px;
+    }
+    .btn-add {
+      width: 100%; padding: 10px; border: 1px dashed var(--primary);
+      color: var(--primary); background: #f0fdfa; border-radius: var(--radius);
+      cursor: pointer; font-weight: 500; transition: 0.2s;
+    }
+    .btn-add:hover { background: #ccfbf1; }
+
+    /* Action Buttons */
+    .actions-bar {
+      position: sticky; bottom: -24px; background: var(--surface);
+      padding: 16px 0; border-top: 1px solid var(--border);
+      display: flex; gap: 10px; margin-top: auto;
+    }
+    .btn {
+      flex: 1; padding: 12px; border: none; border-radius: var(--radius);
+      font-weight: 600; cursor: pointer; font-size: 14px; display: flex; justify-content: center; align-items: center; gap: 8px;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: #e2e8f0; color: var(--text-main); }
+
+    /* --- RIGHT SIDE (PREVIEW) --- */
+    .preview-pane {
+      padding: 40px;
+      display: flex; justify-content: center; align-items: flex-start;
+      background: #cbd5e1; /* Darker bg to make paper pop */
+      overflow-y: auto;
+    }
+
+    /* The A4 Paper */
+    .a4-paper {
+      width: 210mm; min-height: 297mm;
+      background: white;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      padding: 40px 50px;
+      position: relative;
+      display: flex; flex-direction: column;
+    }
+
+    /* Prescription Design */
+    .doc-header { text-align: center; border-bottom: 2px solid var(--primary); padding-bottom: 15px; margin-bottom: 20px; }
+    .doc-name { font-size: 24px; font-weight: 700; color: var(--primary); margin: 0; text-transform: uppercase; }
+    .doc-meta { font-size: 12px; color: var(--text-muted); margin-top: 5px; line-height: 1.4; }
+    
+    .pt-info { display: flex; justify-content: space-between; background: #f8fafc; padding: 12px 15px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 25px; }
+    .pt-info div { font-size: 13px; line-height: 1.6; }
+    .pt-info strong { font-weight: 600; color: #334155; }
+
+    .rx-symbol { font-size: 28px; font-weight: 700; font-family: serif; font-style: italic; margin-bottom: 10px; }
+    
+    .rx-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    .rx-table th { text-align: left; font-size: 12px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid #e2e8f0; padding: 8px 4px; }
+    .rx-table td { padding: 12px 4px; border-bottom: 1px solid #f1f5f9; vertical-align: top; font-size: 14px; }
+    .rx-name { font-weight: 600; color: var(--text-main); font-size: 15px; }
+    .rx-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .rx-dose { font-weight: 600; color: var(--primary); }
+
+    .section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; margin-top: 20px; color: #475569; }
+    .free-text { font-size: 14px; line-height: 1.6; white-space: pre-wrap; color: #334155; }
+
+    .footer { margin-top: auto; padding-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .sig-line { border-top: 1px solid #94a3b8; width: 200px; text-align: center; padding-top: 8px; font-size: 12px; color: var(--text-muted); }
+
+    /* --- PRINT MEDIA QUERY --- */
+    @media print {
+      @page { margin: 0; size: A4; }
+      body { height: auto; overflow: visible; background: white; }
+      .app-container { display: block; }
+      .editor-pane, .actions-bar, .noprint { display: none !important; }
+      .preview-pane { padding: 0; background: white; display: block; }
+      .a4-paper { box-shadow: none; width: 100%; min-height: auto; padding: 20px 40px; }
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 900px) {
+      .app-container { grid-template-columns: 1fr; height: auto; overflow: visible; }
+      .editor-pane { height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+      .preview-pane { padding: 20px; }
+      .a4-paper { width: 100%; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <aside class="editor-pane">
+    <div class="brand">
+      <h1>E-Prescription</h1>
+      <span>v2.0</span>
+    </div>
+
+    <div class="form-group">
+      <label>Doctor Details (Header)</label>
+      <input id="docName" type="text" value="Dr. Md Rezaul Karim (Shrabon)" placeholder="Doctor Name" />
+      <textarea id="docMeta" rows="3" style="margin-top:6px" placeholder="Qualifications, Reg No, etc.">MBBS (Chittagong Medical College Hospital) | MRCS Part-A (London)
+Ex-RMO - Labaid Cancer Hospital. | RMO (CCU) - ZU Model Hospital Feni
+BMDC Reg: A-119828</textarea>
+    </div>
+
+    <hr style="border:0; border-top:1px solid var(--border); width:100%; margin:10px 0;">
+
+    <div class="row">
+      <div class="col">
+        <label>Patient Name</label>
+        <input id="pName" type="text" placeholder="Full Name" />
+      </div>
+      <div class="col" style="flex: 0 0 80px">
+        <label>Age</label>
+        <input id="pAge" type="text" placeholder="35" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <label>Gender</label>
+        <select id="pGender">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Child">Child</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Date</label>
+        <input id="pDate" type="date" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Contact / ID (Optional)</label>
+      <input id="pContact" type="text" placeholder="Phone or Patient ID" />
+    </div>
+
+    <div class="form-group">
+      <label>Chief Complaints / History</label>
+      <textarea id="pComplaints" rows="3" placeholder="- Fever for 3 days&#10;- Headache"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Diagnosis</label>
+      <input id="pDiagnosis" type="text" placeholder="e.g. Viral Fever" />
+    </div>
+
+    <div>
+      <label style="display:flex; justify-content:space-between; align-items:center">
+        Rx (Medicines)
+        <small style="color:var(--primary); cursor:pointer" onclick="addMed()">+ Add New</small>
+      </label>
+      <div id="medListContainer">
+        </div>
+      <button type="button" class="btn-add" onclick="addMed()">+ Add Medicine</button>
+    </div>
+
+    <div class="form-group" style="margin-top:20px">
+      <label>Investigations (Tests)</label>
+      <textarea id="pTests" rows="2" placeholder="CBC, X-Ray..."></textarea>
+    </div>
+    
+    <div class="row">
+      <div class="col">
+        <label>Advice / Note</label>
+        <textarea id="pAdvice" rows="2" placeholder="Drink plenty of water..."></textarea>
+      </div>
+      <div class="col">
+        <label>Follow Up</label>
+        <input id="pFollowUp" type="date" />
+      </div>
+    </div>
+
+    <div class="actions-bar">
+      <button class="btn btn-secondary" onclick="window.print()">Print</button>
+      <button class="btn btn-primary" id="downloadPdf">Download PDF</button>
+    </div>
+  </aside>
+
+  <main class="preview-pane">
+    <div class="a4-paper" id="printArea">
+      
+      <div class="doc-header">
+        <h2 class="doc-name" id="disp_docName"></h2>
+        <div class="doc-meta" id="disp_docMeta"></div>
+      </div>
+
+      <div class="pt-info">
+        <div style="flex:1">
+          <div><strong>Name:</strong> <span id="disp_name"></span></div>
+          <div><strong>Age/Sex:</strong> <span id="disp_age_sex"></span></div>
+        </div>
+        <div style="flex:1; text-align:right">
+          <div><strong>Date:</strong> <span id="disp_date"></span></div>
+          <div><strong>ID/Ref:</strong> <span id="disp_contact"></span></div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:20px; flex:1">
+        
+        <div style="width: 30%; border-right: 1px solid #e2e8f0; padding-right: 15px;">
+          
+          <div id="sect_complaints">
+            <div class="section-title">Chief Complaints</div>
+            <div class="free-text" id="disp_complaints"></div>
+          </div>
+
+          <div id="sect_tests" style="margin-top:20px">
+            <div class="section-title">Investigations</div>
+            <div class="free-text" id="disp_tests"></div>
+          </div>
+
+           <div id="sect_diagnosis" style="margin-top:20px">
+            <div class="section-title">Diagnosis</div>
+            <div class="free-text" id="disp_diagnosis"></div>
+          </div>
+
+        </div>
+
+        <div style="flex:1; padding-left:10px;">
+          <div class="rx-symbol">Rx</div>
+          
+          <table class="rx-table">
+            <thead>
+              <tr>
+                <th width="5%">#</th>
+                <th width="50%">Medicine Name</th>
+                <th width="25%">Dosage</th>
+                <th width="20%">Duration</th>
+              </tr>
+            </thead>
+            <tbody id="disp_meds">
+              </tbody>
+          </table>
+
+          <div id="sect_advice">
+            <div class="section-title">Advice</div>
+            <div class="free-text" id="disp_advice"></div>
+          </div>
+
+           <div id="sect_followup" style="margin-top:15px; display:none;">
+            <strong>Follow Up:</strong> <span id="disp_followup"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div style="font-size:10px; color:#94a3b8">Generated via E-Prescription System</div>
+        <div class="sig-line">Signature</div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<datalist id="drugNames">
+  <option value="Tab. Napa Extend">
+  <option value="Tab. Pantonix 20mg">
+  <option value="Cap. Omep 20mg">
+  <option value="Tab. Altrexc">
+  <option value="Syr. Tofen">
+  <option value="Tab. Monas 10">
+  <option value="Tab. Ceevit">
+  <option value="Tab. Sergel 20">
+  <option value="Cap. Maxpro 20">
+  <option value="Tab. Zimax 500">
+</datalist>
+
+<datalist id="frequencies">
+  <option value="1 + 0 + 1">
+  <option value="1 + 1 + 1">
+  <option value="1 + 0 + 0">
+  <option value="0 + 0 + 1">
+  <option value="0 + 1 + 0">
+</datalist>
+
+<datalist id="instructions">
+  <option value="After meal">
+  <option value="Before meal">
+  <option value="With empty stomach">
+  <option value="If pain persists">
+</datalist>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+  // --- STATE MANAGEMENT ---
+  const state = {
+    meds: [
+      { name: 'Tab. Napa Extend', dose: '1 + 1 + 1', duration: '3 Days', instr: 'After meal' }
+    ]
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('pDate').value = today;
+
+  // --- DOM ELEMENTS ---
+  const medContainer = document.getElementById('medListContainer');
+
+  // --- INITIAL RENDER ---
+  function init() {
+    renderMedsInput();
+    updatePreview();
+  }
+
+  // --- RENDER EDITOR INPUTS ---
+  function renderMedsInput() {
+    medContainer.innerHTML = '';
+    state.meds.forEach((med, index) => {
+      const el = document.createElement('div');
+      el.className = 'med-card';
+      el.innerHTML = `
+        <button class="remove-btn" onclick="removeMed(${index})">&times;</button>
+        <div class="row">
+          <div class="col" style="flex:2">
+            <label>Medicine Name</label>
+            <input list="drugNames" value="${med.name}" oninput="updateMed(${index}, 'name', this.value)" placeholder="e.g. Tab Napa">
+          </div>
+           <div class="col">
+            <label>Duration</label>
+            <input value="${med.duration}" oninput="updateMed(${index}, 'duration', this.value)" placeholder="7 days">
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="col">
+            <label>Dosage</label>
+            <input list="frequencies" value="${med.dose}" oninput="updateMed(${index}, 'dose', this.value)" placeholder="1+0+1">
+          </div>
+          <div class="col">
+            <label>Instruction</label>
+            <input list="instructions" value="${med.instr}" oninput="updateMed(${index}, 'instr', this.value)" placeholder="After meal">
+          </div>
+        </div>
+      `;
+      medContainer.appendChild(el);
+    });
+  }
+
+  // --- DATA HANDLERS ---
+  function addMed() {
+    state.meds.push({ name: '', dose: '', duration: '', instr: '' });
+    renderMedsInput();
+    updatePreview(); // update immediately so they see the empty row
+  }
+
+  function removeMed(index) {
+    state.meds.splice(index, 1);
+    renderMedsInput();
+    updatePreview();
+  }
+
+  function updateMed(index, field, value) {
+    state.meds[index][field] = value;
+    updatePreview();
+  }
+
+  // --- PREVIEW LOGIC ---
+  function getValue(id) { return document.getElementById(id).value; }
+  function setText(id, val) { document.getElementById(id).innerText = val; }
+
+  function updatePreview() {
+    // Header
+    setText('disp_docName', getValue('docName'));
+    document.getElementById('disp_docMeta').innerText = getValue('docMeta'); // Keep newlines
+
+    // Patient Info
+    const name = getValue('pName') || '.....................';
+    const age = getValue('pAge');
+    const gender = document.getElementById('pGender').value;
+    
+    setText('disp_name', name);
+    setText('disp_age_sex', (age ? `${age}Y / ` : '') + gender);
+    setText('disp_date', getValue('pDate'));
+    setText('disp_contact', getValue('pContact'));
+
+    // Clinical
+    setText('disp_complaints', getValue('pComplaints'));
+    setText('disp_tests', getValue('pTests'));
+    setText('disp_diagnosis', getValue('pDiagnosis'));
+    setText('disp_advice', getValue('pAdvice'));
+
+    const follow = getValue('pFollowUp');
+    const followEl = document.getElementById('sect_followup');
+    if(follow) {
+      followEl.style.display = 'block';
+      setText('disp_followup', follow);
+    } else {
+      followEl.style.display = 'none';
+    }
+
+    // Meds Table
+    const tbody = document.getElementById('disp_meds');
+    tbody.innerHTML = '';
+    state.meds.forEach((med, i) => {
+      if(!med.name && !med.dose) return; // Skip empty
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i+1}.</td>
+        <td>
+          <div class="rx-name">${med.name}</div>
+          <div class="rx-meta">${med.instr}</div>
+        </td>
+        <td class="rx-dose">${med.dose}</td>
+        <td>${med.duration}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- EVENT LISTENERS FOR STATIC INPUTS ---
+  const inputIds = ['docName', 'docMeta', 'pName', 'pAge', 'pGender', 'pDate', 'pContact', 'pComplaints', 'pTests', 'pDiagnosis', 'pAdvice', 'pFollowUp'];
+  inputIds.forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+
+  // --- PDF GENERATION ---
+  document.getElementById('downloadPdf').addEventListener('click', async () => {
+    const element = document.getElementById('printArea');
+    const btn = document.getElementById('downloadPdf');
+    const oldText = btn.innerText;
+    btn.innerText = "Generating...";
+    
+    try {
+      // 1. Setup Canvas
+      const canvas = await html2canvas(element, {
+        scale: 2, // High res
+        useCORS: true,
+        scrollY: -window.scrollY
+      });
+
+      // 2. Setup PDF (A4 size)
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = canvas.height * imgWidth / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      
+      // 3. Save
+      const pName = getValue('pName').replace(/\s+/g, '_') || 'Prescription';
+      pdf.save(`${pName}_${getValue('pDate')}.pdf`);
+
+    } catch (err) {
+      console.error(err);
+      alert("Error generating PDF. Please check console.");
+    } finally {
+      btn.innerText = oldText;
+    }
+  });
+
+  // Initialize
+  init();
+
+</script>
+</body>
+</html>
